@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"go-web-scraper/logger"
+	"os"
+	"path/filepath"
 
 	"github.com/gocolly/colly"
 )
@@ -45,9 +48,50 @@ func main() {
 		PokemonProducts = append(PokemonProducts, pokemonProduct)
 	})
 
+	c.OnScraped(func(r *colly.Response) {
+		logger.Logger.Info(fmt.Sprintf("%v scraped!", r.Request.URL))
+	})
+
 	c.Visit("https://scrapeme.live/shop/")
 
-	for _, p := range PokemonProducts {
-		logger.Logger.Info(fmt.Sprintf("Pokemon: %v", p))
+	AddToCSVFile()
+}
+
+func AddToCSVFile() {
+	csvFilePath := filepath.Join(".", "csv_file")
+	err := os.MkdirAll(csvFilePath, os.ModePerm)
+	if err != nil {
+		logger.Logger.Panic("unable to create log file folder")
+	}
+	csvFile, err := os.Create(fmt.Sprintf("%v/%v", csvFilePath, "products.csv"))
+	if err != nil {
+		logger.Logger.Panic("unable to create product csv file")
+	}
+	defer csvFile.Close()
+
+	// initializing a file writer
+	writer := csv.NewWriter(csvFile)
+	defer writer.Flush()
+
+	// defining the CSV headers
+	headers := []string{
+		"url",
+		"image",
+		"name",
+		"price",
+	}
+
+	// writing the column headers
+	writer.Write(headers)
+
+	for _, pokemon := range PokemonProducts {
+		record := []string{
+			pokemon.Url,
+			pokemon.Image,
+			pokemon.Name,
+			pokemon.Price,
+		}
+
+		writer.Write(record)
 	}
 }

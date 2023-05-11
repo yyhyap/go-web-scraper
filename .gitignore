@@ -42,3 +42,6 @@ yarn-error.log*
 # Go workspace file
 go.work
 go.work.sum
+
+# csv file
+*.csv

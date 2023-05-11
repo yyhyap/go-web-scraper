@@ -11,10 +11,10 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var Logger *zap.Logger = InitializeLogger()
+var Logger *zap.Logger = initializeLogger()
 
 // https://codewithmukesh.com/blog/structured-logging-in-golang-with-zap/
-func InitializeLogger() *zap.Logger {
+func initializeLogger() *zap.Logger {
 	config := zap.NewProductionEncoderConfig()
 	config.EncodeTime = zapcore.ISO8601TimeEncoder
 	fileEncoder := zapcore.NewJSONEncoder(config)
