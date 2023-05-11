@@ -7,6 +7,17 @@ import (
 	"github.com/gocolly/colly"
 )
 
+var (
+	PokemonProducts []PokemonProduct
+)
+
+type PokemonProduct struct {
+	Url   string
+	Image string
+	Name  string
+	Price string
+}
+
 func main() {
 	c := colly.NewCollector()
 
@@ -22,5 +33,21 @@ func main() {
 		logger.Logger.Info(fmt.Sprintf("Page visited: %v", r.Request.URL))
 	})
 
+	// iterating over the list of HTML product elements
+	c.OnHTML("li.product", func(e *colly.HTMLElement) {
+		pokemonProduct := PokemonProduct{}
+
+		pokemonProduct.Url = e.ChildAttr("a", "href")
+		pokemonProduct.Image = e.ChildAttr("img", "src")
+		pokemonProduct.Name = e.ChildText("h2.woocommerce-loop-product__title")
+		pokemonProduct.Price = e.ChildText("span.price")
+
+		PokemonProducts = append(PokemonProducts, pokemonProduct)
+	})
+
 	c.Visit("https://scrapeme.live/shop/")
+
+	for _, p := range PokemonProducts {
+		logger.Logger.Info(fmt.Sprintf("Pokemon: %v", p))
+	}
 }
