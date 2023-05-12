@@ -22,6 +22,16 @@ type PokemonProduct struct {
 }
 
 func main() {
+	pageToScrape := "https://scrapeme.live/shop/"
+	pagesToScrape := []string{}
+	pagesDiscovered := map[string]struct{}{}
+	pagesDiscovered[pageToScrape] = struct{}{}
+
+	// current iteration
+	i := 1
+	// max pages to scrape
+	maxLimit := 5
+
 	c := colly.NewCollector()
 
 	c.OnRequest(func(r *colly.Request) {
@@ -36,6 +46,17 @@ func main() {
 		logger.Logger.Info(fmt.Sprintf("Page visited: %v", r.Request.URL))
 	})
 
+	// iterating over the list of pagination links to implement the crawling logic
+	c.OnHTML("a.page-numbers", func(e *colly.HTMLElement) {
+		// discovering a new page
+		newPaginationLink := e.Attr("href")
+
+		if _, exist := pagesDiscovered[newPaginationLink]; !exist {
+			pagesToScrape = append(pagesToScrape, newPaginationLink)
+			pagesDiscovered[newPaginationLink] = struct{}{}
+		}
+	})
+
 	// iterating over the list of HTML product elements
 	c.OnHTML("li.product", func(e *colly.HTMLElement) {
 		pokemonProduct := PokemonProduct{}
@@ -48,11 +69,22 @@ func main() {
 		PokemonProducts = append(PokemonProducts, pokemonProduct)
 	})
 
-	c.OnScraped(func(r *colly.Response) {
-		logger.Logger.Info(fmt.Sprintf("%v scraped!", r.Request.URL))
+	c.OnScraped(func(res *colly.Response) {
+		if len(pagesToScrape) > 0 && i < maxLimit {
+			pageToScrape = pagesToScrape[0]
+			pagesToScrape[0] = ""
+			pagesToScrape = pagesToScrape[1:]
+
+			// increment the counter
+			i++
+
+			c.Visit(pageToScrape)
+		}
+
+		logger.Logger.Info(fmt.Sprintf("%v scraped!", res.Request.URL))
 	})
 
-	c.Visit("https://scrapeme.live/shop/")
+	c.Visit(pageToScrape)
 
 	AddToCSVFile()
 }
