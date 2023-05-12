@@ -6,12 +6,14 @@ import (
 	"go-web-scraper/logger"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/gocolly/colly"
 )
 
 var (
 	PokemonProducts []PokemonProduct
+	mutex           sync.Mutex
 )
 
 type PokemonProduct struct {
@@ -22,17 +24,24 @@ type PokemonProduct struct {
 }
 
 func main() {
-	pageToScrape := "https://scrapeme.live/shop/"
+	var pageToScrape string
 	pagesToScrape := []string{}
 	pagesDiscovered := map[string]struct{}{}
-	pagesDiscovered[pageToScrape] = struct{}{}
+	pagesDiscovered["https://scrapeme.live/shop/"] = struct{}{}
 
 	// current iteration
 	i := 1
 	// max pages to scrape
 	maxLimit := 5
 
-	c := colly.NewCollector()
+	c := colly.NewCollector(
+		colly.Async(true),
+	)
+
+	c.Limit(&colly.LimitRule{
+		// limit the parallel requests to 4 request at a time
+		Parallelism: 4,
+	})
 
 	// setting a valid User-Agent header
 	c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
@@ -54,10 +63,12 @@ func main() {
 		// discovering a new page
 		newPaginationLink := e.Attr("href")
 
+		mutex.Lock()
 		if _, exist := pagesDiscovered[newPaginationLink]; !exist {
 			pagesToScrape = append(pagesToScrape, newPaginationLink)
 			pagesDiscovered[newPaginationLink] = struct{}{}
 		}
+		mutex.Unlock()
 	})
 
 	// iterating over the list of HTML product elements
@@ -73,21 +84,31 @@ func main() {
 	})
 
 	c.OnScraped(func(res *colly.Response) {
+		var newPageToScrape *string = nil
+
+		mutex.Lock()
 		if len(pagesToScrape) > 0 && i < maxLimit {
 			pageToScrape = pagesToScrape[0]
 			pagesToScrape[0] = ""
 			pagesToScrape = pagesToScrape[1:]
 
+			newPageToScrape = &pageToScrape
+
 			// increment the counter
 			i++
+		}
+		mutex.Unlock()
 
-			c.Visit(pageToScrape)
+		if newPageToScrape != nil {
+			c.Visit(*newPageToScrape)
 		}
 
 		logger.Logger.Info(fmt.Sprintf("%v scraped!", res.Request.URL))
 	})
 
-	c.Visit(pageToScrape)
+	c.Visit("https://scrapeme.live/shop/")
+
+	c.Wait()
 
 	AddToCSVFile()
 }
