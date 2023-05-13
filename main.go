@@ -80,7 +80,9 @@ func main() {
 		pokemonProduct.Name = e.ChildText("h2.woocommerce-loop-product__title")
 		pokemonProduct.Price = e.ChildText("span.price")
 
+		mutex.Lock()
 		PokemonProducts = append(PokemonProducts, pokemonProduct)
+		mutex.Unlock()
 	})
 
 	c.OnScraped(func(res *colly.Response) {
