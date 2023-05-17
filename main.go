@@ -119,7 +119,7 @@ func AddToCSVFile() {
 	csvFilePath := filepath.Join(".", "csv_file")
 	err := os.MkdirAll(csvFilePath, os.ModePerm)
 	if err != nil {
-		logger.Logger.Panic("unable to create log file folder")
+		logger.Logger.Panic("unable to create csv file folder")
 	}
 	csvFile, err := os.Create(fmt.Sprintf("%v/%v", csvFilePath, "products.csv"))
 	if err != nil {
